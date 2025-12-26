@@ -1,0 +1,13 @@
+# virtual environments
+.venv/
+
+# python cache
+src/__pycache__/
+*.pyc
+
+# mlflow
+mlruns/
+mlflow.db
+
+# trained models
+models/

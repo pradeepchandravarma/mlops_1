@@ -1,0 +1,44 @@
+#def main():
+    #print("Hello from mlops-1!")
+from src.train import train_regression
+from src.evaluate import model_evaluate
+import joblib
+import mlflow
+import mlflow.sklearn
+
+
+if __name__ == "__main__":
+
+    with mlflow.start_run(run_name="sgd_regression_student_performance"):
+        model, scaler, X_test, y_test = train_regression()
+
+        print("----------Gradient Descent Model Trained and Saved Successfully------------")
+
+        #save trained model
+        joblib.dump(
+        {"model": model, "scaler": scaler},
+        "models/student_performance_sgd.joblib"
+        )
+
+
+
+        mlflow.log_artifact("models/student_performance_sgd.joblib", artifact_path="model")
+
+        metrics = model_evaluate(model, X_test, y_test)
+        print("\n------------Model Metrics------------")
+        print(metrics)
+
+
+        mlflow.log_metric("mse", metrics["mse"])
+        mlflow.log_metric("r2", metrics["r2"])
+
+
+
+        mlflow.log_param("model_type", "SGDRegressor")
+        mlflow.log_param("loss", "squared_error")
+        mlflow.log_param("learning_rate", "constant")
+        mlflow.log_param("eta0", 0.01)
+        mlflow.log_param("max_iter", 1000)
+        mlflow.log_param("random_state", 42)
+        
+        

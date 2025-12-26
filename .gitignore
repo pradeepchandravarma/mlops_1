@@ -1,0 +1,16 @@
+# Virtual environment
+.venv/
+
+# MLflow local artifacts
+mlruns/
+mlflow.db
+
+# Trained models (artifacts)
+models/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store

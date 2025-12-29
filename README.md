@@ -2,7 +2,7 @@
 
 
 
-Maryam branch: Student Performance model + MLflow experiments (local).
+Vidya branch: Student Performance model + MLflow experiments (local).
 
 
 

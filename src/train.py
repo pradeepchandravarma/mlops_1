@@ -15,43 +15,35 @@ from sklearn.metrics import mean_squared_error, r2_score
 
 
 DATA_PATH = "data/Student_Performance.csv"
-LOCAL_MODEL_DIR = "models"
-LOCAL_MODEL_PATH = os.path.join(LOCAL_MODEL_DIR, "model.joblib")
-
-# Target detection (robust)
-TARGET_CANDIDATES = [
-    "Performance Index",
-    "Performance_Index",
-    "performance_index",
-]
+TARGET_CANDIDATES = ["Performance Index", "Performance_Index", "performance_index"]
 
 
 def detect_target(columns):
     for c in TARGET_CANDIDATES:
         if c in columns:
             return c
-    # fallback: last column if not found
-    return columns[-1]
+    return columns[-1]  # fallback
 
 
 def main():
-    # ---------- MLflow: point to shared server via tunnel ----------
-    # IMPORTANT: tunnel must be up: ssh -L 5000:localhost:5000 ...
+    # 1) Connect to shared MLflow server (via SSH tunnel)
     mlflow.set_tracking_uri("http://localhost:5000")
+
+    # 2) Everyone uses the SAME experiment name
     mlflow.set_experiment("student-performance")
 
-    # ---------- Load data ----------
+    # Load dataset
     df = pd.read_csv(DATA_PATH)
     target = detect_target(list(df.columns))
 
     y = df[target]
     X = df.drop(columns=[target])
 
-    # Identify numeric/categorical columns
+    # Columns
     num_cols = X.select_dtypes(include="number").columns.tolist()
     cat_cols = X.select_dtypes(exclude="number").columns.tolist()
 
-    # Preprocessing pipelines
+    # Preprocess
     numeric_pipe = Pipeline([
         ("imputer", SimpleImputer(strategy="median")),
     ])
@@ -66,28 +58,25 @@ def main():
         ("cat", categorical_pipe, cat_cols),
     ])
 
-    model = LinearRegression()
-
     pipeline = Pipeline([
         ("preprocess", preprocessor),
-        ("model", model),
+        ("model", LinearRegression()),
     ])
 
-    # Train/test split
+    # Split
     test_size = 0.2
     random_state = 42
-
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state
     )
 
-    # ---------- MLflow run ----------
+    # Run name = your model + your name
     run_name = "linear_regression_maryam"
 
     with mlflow.start_run(run_name=run_name):
-        # Tags (useful for filtering/comparison)
+        # Tags (easy filtering in UI)
         mlflow.set_tag("member", "maryam")
-        mlflow.set_tag("dataset", "student-performance")
+        mlflow.set_tag("dataset", "Student_Performance")
         mlflow.set_tag("problem_type", "regression")
 
         # Params
@@ -95,38 +84,34 @@ def main():
         mlflow.log_param("target", target)
         mlflow.log_param("test_size", test_size)
         mlflow.log_param("random_state", random_state)
-        mlflow.log_param("num_features", len(num_cols))
-        mlflow.log_param("cat_features", len(cat_cols))
 
-        # Train
+        # Train + predict
         pipeline.fit(X_train, y_train)
-
-        # Predict
         preds = pipeline.predict(X_test)
 
         # Metrics
-        mse = mean_squared_error(y_test, preds)
-        rmse = float(np.sqrt(mse))
+        rmse = float(np.sqrt(mean_squared_error(y_test, preds)))
         r2 = float(r2_score(y_test, preds))
 
         mlflow.log_metric("rmse", rmse)
         mlflow.log_metric("r2", r2)
 
-        # Save locally
-        os.makedirs(LOCAL_MODEL_DIR, exist_ok=True)
-        joblib.dump(pipeline, LOCAL_MODEL_PATH)
+        # Save local model (optional)
+        os.makedirs("models", exist_ok=True)
+        joblib.dump(pipeline, "models/model.joblib")
 
-        # Try to log model artifact to MLflow (may fail if S3 creds missing)
+        # Log model artifact to MLflow (may require S3 creds on client)
         try:
-            mlflow.sklearn.log_model(pipeline, name="model")
+            mlflow.sklearn.log_model(pipeline, artifact_path="model")
+            print("✅ Model artifact logged to MLflow (S3).")
         except Exception as e:
-            print("⚠️ Skipping MLflow model artifact upload (likely S3 creds missing):", e)
+            print("⚠️ Metrics logged, but model artifact upload skipped (S3 creds missing).")
+            print("   Error:", e)
 
         print("Target column:", target)
         print(f"RMSE = {rmse:.4f}")
         print(f"R2   = {r2:.4f}")
-        print("Model saved locally to:", LOCAL_MODEL_PATH)
-        print("✅ Run logged to MLflow with name:", run_name)
+        print("✅ Run logged:", run_name)
 
 
 if __name__ == "__main__":

@@ -9,7 +9,11 @@ import mlflow.sklearn
 
 if __name__ == "__main__":
 
-    with mlflow.start_run(run_name="sgd_regression_student_performance"):
+    mlflow.set_tracking_uri("http://localhost:5000")
+
+    mlflow.set_experiment("student-performance")
+
+    with mlflow.start_run(run_name="sgd_regression_rishika"):
         model, scaler, X_test, y_test = train_regression()
 
         print("----------Gradient Descent Model Trained and Saved Successfully------------")
@@ -22,7 +26,14 @@ if __name__ == "__main__":
 
 
 
-        mlflow.log_artifact("models/student_performance_sgd.joblib", artifact_path="model")
+        #mlflow.log_artifact("models/student_performance_sgd.joblib", artifact_path="model")
+
+        # Log & register model (auto-versioned)
+        mlflow.sklearn.log_model(
+            model,
+            name='model',
+            registered_model_name='sgd_student_performance'
+        )
 
         metrics = model_evaluate(model, X_test, y_test)
         print("\n------------Model Metrics------------")

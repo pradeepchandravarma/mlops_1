@@ -12,6 +12,8 @@ from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
+from mlflow.models import infer_signature
+
 from config import Config
 
 
@@ -58,6 +60,10 @@ def main():
     cfg = Config()
     cfg.artifacts_dir.mkdir(parents=True, exist_ok=True)
 
+    # MLflow tracking + experiment
+    mlflow.set_tracking_uri("http://localhost:5000")
+    mlflow.set_experiment("student-performance")
+
     df = pd.read_csv(cfg.data_path)
 
     if cfg.target_col not in df.columns:
@@ -79,9 +85,8 @@ def main():
         "model__alpha": [0.0001, 0.001, 0.01, 0.1, 1.0, 5.0, 10.0],
     }
 
-    mlflow.set_experiment(cfg.experiment_name)
-
-    with mlflow.start_run(run_name="train_lasso_gridsearch"):
+    with mlflow.start_run(run_name="lasso_regression_vidya"):
+        mlflow.set_tag("mlflow.user", "Vidya")
         mlflow.log_param("target_col", cfg.target_col)
         mlflow.log_param("test_size", cfg.test_size)
         mlflow.log_param("random_state", cfg.random_state)
@@ -102,28 +107,34 @@ def main():
         for k, v in best_params.items():
             mlflow.log_param(k, v)
 
-        # Evaluate on holdout test split (quick sanity)
+        # Evaluate on holdout test split
         y_pred = best_model.predict(X_test)
         metrics = regression_metrics(y_test, y_pred)
         mlflow.log_metrics({f"test_{k}": v for k, v in metrics.items()})
 
-        # Save model locally
+        # Save model locally (optional, for your own use)
         joblib.dump(best_model, cfg.model_path)
 
-        # Log model to MLflow
+        # KEY CHANGE: Log model in MLflow model format (like your teammate) ----
+        signature = infer_signature(X_train, best_model.predict(X_train))
+
         mlflow.sklearn.log_model(
             sk_model=best_model,
-            artifact_path="model",
+            artifact_path="model",  # creates model/ with MLmodel, conda.yaml, python_env.yaml, requirements.txt, model.pkl
+            signature=signature,
+            input_example=X_train.head(5),
         )
 
-        # Also log the local artifact file for convenience
-        mlflow.log_artifact(str(cfg.model_path))
+        #mlflow.log_artifacts(str(cfg.artifacts_dir), artifact_path="artifacts")
 
         print("Training complete.")
         print("Best params:", best_params)
         print("Holdout test metrics:", metrics)
-        print(f"Saved model to: {cfg.model_path}")
+        print(f"Saved model locally to: {cfg.model_path}")
+        
 
 
 if __name__ == "__main__":
     main()
+
+print("RUNNING UPDATED train_lasso.py")

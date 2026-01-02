@@ -6,6 +6,8 @@ import requests
 API_BASE_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 PREDICT_URL = f"{API_BASE_URL.rstrip('/')}/predict"
 
+st.write("API_URL:", API_URL)
+
 st.title("Student Performance Predictor (UI)")
 
 hours = st.number_input("Hours Studied", min_value=0.0, max_value=24.0, value=6.0)

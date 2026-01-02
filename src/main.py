@@ -101,7 +101,8 @@ def main():
 
         # try logging model artifact; if server uses S3 and creds missing, don't block your run
         try:
-            mlflow.sklearn.log_model(pipeline, name="model")
+            mlflow.sklearn.log_model(pipeline, name="model", registered_model_name=os.getenv("MODEL_NAME", "student-performance-model")
+)
         except Exception as e:
             print("⚠️ Model artifact upload skipped:", str(e), flush=True)
 

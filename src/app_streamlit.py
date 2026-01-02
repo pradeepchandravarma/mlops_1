@@ -13,15 +13,20 @@ papers = st.number_input("Sample Question Papers Practiced", min_value=0.0, max_
 
 if st.button("Predict"):
     payload = {
-        "features": {
-            "Hours Studied": hours,
-            "Previous Scores": prev,
-            "Extracurricular Activities": extra,
-            "Sleep Hours": sleep,
-            "Sample Question Papers Practiced": papers,
-        }
+        "hours_studied": hours,
+        "previous_scores": prev,
+        "extracurricular_activities": extra,
+        "sleep_hours": sleep,
+        "sample_question_papers_practiced": papers,
     }
-    r = requests.post(API_URL, json=payload, timeout=10)
-    r.raise_for_status()
-    pred = r.json()["prediction"]
-    st.success(f"Predicted Performance Index: {pred:.2f}")
+
+    try:
+        r = requests.post(API_URL, json=payload, timeout=10)
+        if r.status_code != 200:
+            st.error(f"API error {r.status_code}: {r.text}")
+        else:
+            pred = r.json()["prediction"]
+            st.success(f"Predicted Performance Index: {pred:.2f}")
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"Request failed: {e}")

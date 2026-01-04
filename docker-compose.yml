@@ -1,0 +1,91 @@
+services:
+  train:
+    build: .
+    environment:
+      APP_MODE: train
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI}
+      EXPERIMENT_NAME: ${EXPERIMENT_NAME}
+      RUN_NAME: ${RUN_NAME}
+      DATA_PATH: ${DATA_PATH}
+      TARGET_COL: ${TARGET_COL}
+      MODEL_PATH: ${MODEL_PATH}
+      MODEL_READY_PATH: ${MODEL_READY_PATH}
+      ARTIFACT_DIR: ${ARTIFACT_DIR}
+
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+    volumes:
+      - models:/app/models
+      - artifacts:/app/artifacts
+
+  register:
+    build: .
+    environment:
+      APP_MODE: register
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI}
+      EXPERIMENT_NAME: ${EXPERIMENT_NAME}
+      REGISTERED_MODEL_NAME: ${REGISTERED_MODEL_NAME}
+      SELECTION_MODE: ${SELECTION_MODE}
+      MODEL_ARTIFACT_PATH: ${MODEL_ARTIFACT_PATH}
+      ALIAS_NAME: ${ALIAS_NAME}
+
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+    depends_on:
+      train:
+        condition: service_completed_successfully
+
+  export:
+    build: .
+    environment:
+      APP_MODE: export
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI}
+      REGISTERED_MODEL_NAME: ${REGISTERED_MODEL_NAME}
+      MODEL_ALIAS: champion
+      EXPORT_MODEL_PATH: ${MODEL_PATH}
+      MODEL_READY_PATH: ${MODEL_READY_PATH}
+
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+    volumes:
+      - models:/app/models
+    depends_on:
+      register:
+        condition: service_completed_successfully
+
+  api:
+    build: .
+    environment:
+      APP_MODE: api
+      API_PORT: ${API_PORT}
+      MODEL_PATH: ${MODEL_PATH}
+      MODEL_READY_PATH: ${MODEL_READY_PATH}
+      MODEL_WAIT_SECONDS: ${MODEL_WAIT_SECONDS}
+      MODEL_POLL_SECONDS: ${MODEL_POLL_SECONDS}
+    volumes:
+      - models:/app/models
+    ports:
+      - "8000:8000"
+    depends_on:
+      export:
+        condition: service_completed_successfully
+
+  ui:
+    build: .
+    environment:
+      APP_MODE: ui
+      UI_PORT: ${UI_PORT}
+      API_URL: ${API_URL}
+      API_TIMEOUT: ${API_TIMEOUT}
+    ports:
+      - "8501:8501"
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  models:
+  artifacts:

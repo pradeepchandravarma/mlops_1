@@ -1,32 +1,18 @@
-import streamlit as st
+import os
 import requests
+import streamlit as st
 
-API_URL = "http://127.0.0.1:8000/predict"
+API_URL = os.getenv("API_URL")
 
-st.title("Student Performance Predictor (UI)")
+st.title("Student Performance Predictor")
 
-hours = st.number_input("Hours Studied", min_value=0.0, max_value=24.0, value=6.0)
-prev = st.number_input("Previous Scores", min_value=0.0, max_value=100.0, value=75.0)
-extra = st.selectbox("Extracurricular Activities", ["Yes", "No"])
-sleep = st.number_input("Sleep Hours", min_value=0.0, max_value=24.0, value=7.0)
-papers = st.number_input("Sample Question Papers Practiced", min_value=0.0, max_value=50.0, value=4.0)
+payload = {}
+payload["hours_studied"] = st.number_input("Hours Studied", 0.0, 24.0, 6.0)
+payload["previous_scores"] = st.number_input("Previous Scores", 0.0, 100.0, 75.0)
+payload["extracurricular_activities"] = st.selectbox("Activities", ["Yes", "No"])
+payload["sleep_hours"] = st.number_input("Sleep Hours", 0.0, 24.0, 7.0)
+payload["sample_question_papers_practiced"] = st.number_input("Papers", 0.0, 50.0, 4.0)
 
 if st.button("Predict"):
-    payload = {
-        "hours_studied": hours,
-        "previous_scores": prev,
-        "extracurricular_activities": extra,
-        "sleep_hours": sleep,
-        "sample_question_papers_practiced": papers,
-    }
-
-    try:
-        r = requests.post(API_URL, json=payload, timeout=10)
-        if r.status_code != 200:
-            st.error(f"API error {r.status_code}: {r.text}")
-        else:
-            pred = r.json()["prediction"]
-            st.success(f"Predicted Performance Index: {pred:.2f}")
-
-    except requests.exceptions.RequestException as e:
-        st.error(f"Request failed: {e}")
+    r = requests.post(API_URL, json=payload)
+    st.success(f"Prediction: {r.json()['prediction']:.2f}")

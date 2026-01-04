@@ -1,16 +1,41 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-import joblib
-import pandas as pd
+import os
+import time
 from pathlib import Path
 
+import joblib
+import pandas as pd
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+
+
+MODEL_PATH = Path(os.getenv("MODEL_PATH", "/app/models/model.joblib"))
+READY_PATH = Path(os.getenv("MODEL_READY_PATH", "/app/models/model.ready"))
+WAIT_SECONDS = int(os.getenv("MODEL_WAIT_SECONDS", "240"))
+POLL_SECONDS = float(os.getenv("MODEL_POLL_SECONDS", "2"))
+
+
+def load_model_with_wait():
+    deadline = time.time() + WAIT_SECONDS
+    last_err = None
+
+    while time.time() < deadline:
+        if READY_PATH.exists() and MODEL_PATH.exists():
+            # avoid half-written/corrupt file
+            if MODEL_PATH.stat().st_size > 10_000:
+                try:
+                    return joblib.load(MODEL_PATH)
+                except Exception as e:
+                    last_err = e
+        time.sleep(POLL_SECONDS)
+
+    raise RuntimeError(
+        f"Model not ready after {WAIT_SECONDS}s | "
+        f"MODEL_PATH={MODEL_PATH} READY_PATH={READY_PATH} last_err={last_err}"
+    )
+
+
 app = FastAPI(title="Student Performance Predictor")
-
-MODEL_PATH = Path("models/model.joblib")
-if not MODEL_PATH.exists():
-    raise RuntimeError(f"Model not found: {MODEL_PATH.resolve()}")
-
-model = joblib.load(MODEL_PATH)
+model = load_model_with_wait()
 
 EXPECTED_FEATURES = [
     "Hours Studied",
@@ -19,6 +44,7 @@ EXPECTED_FEATURES = [
     "Sleep Hours",
     "Sample Question Papers Practiced",
 ]
+
 
 class PredictRequest(BaseModel):
     hours_studied: float = Field(..., ge=0, le=24)
@@ -42,13 +68,9 @@ def predict(req: PredictRequest):
             "Extracurricular Activities": req.extracurricular_activities,
             "Sleep Hours": req.sleep_hours,
             "Sample Question Papers Practiced": req.sample_question_papers_practiced,
-        }])
-
-        # Force correct schema + order
-        X = X[EXPECTED_FEATURES]
+        }])[EXPECTED_FEATURES]
 
         pred = model.predict(X)[0]
         return {"prediction": float(pred)}
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")

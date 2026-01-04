@@ -15,16 +15,15 @@ def get_next_run_name(experiment_name, base_name="regression_NN_pradeep"):
     Generate an auto-incrementing MLflow run name.
     """
     client = MlflowClient()
-    experiment = client.get_experiment_by_name(experiment_name)
+    exp = client.get_experiment_by_name(experiment_name)
 
-    if experiment is None:
+    if exp is None:
         return f"{base_name}_1"
 
     runs = client.search_runs(
-        experiment_ids=[experiment.experiment_id],
+        experiment_ids=[exp.experiment_id],
         max_results=1000
     )
-
     return f"{base_name}_{len(runs) + 1}"
 
 
@@ -42,7 +41,7 @@ def train_model(
     experiment_name="student-performance"
 ):
     # ---------------------------
-    # MLflow setup
+    # MLflow setup (DO NOT force artifact location)
     # ---------------------------
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
     mlflow.set_experiment(experiment_name)
@@ -77,23 +76,22 @@ def train_model(
         # Evaluate model (TEST SET)
         # ---------------------------
         metrics = evaluate_model(model, X_test, y_test)
-
         for name, value in metrics.items():
-            mlflow.log_metric(name, value)
+            mlflow.log_metric(name, float(value))
 
         # ---------------------------
-        # Save artifacts
+        # Save artifacts LOCALLY (do not delete old ones)
         # ---------------------------
         os.makedirs(artifacts_dir, exist_ok=True)
 
         model_path = os.path.join(artifacts_dir, "model.h5")
         scaler_path = os.path.join(artifacts_dir, "scaler.joblib")
 
-        model.save(model_path)
+        model.save(model_path, overwrite=True)
         joblib.dump(scaler, scaler_path)
 
         # ---------------------------
-        # Log artifacts
+        # Log artifacts to MLflow (server decides storage)
         # ---------------------------
         mlflow.log_artifact(model_path, artifact_path="model")
         mlflow.log_artifact(scaler_path, artifact_path="scaler")
@@ -103,8 +101,11 @@ def train_model(
             artifact_path="tf_model"
         )
 
+        # Helpful tags (non-breaking)
+        mlflow.set_tag("run_display_name", run_name)
+        mlflow.set_tag("artifact_source", "local_fallback")
+
         print(f"MLflow run '{run_name}' logged successfully")
-        print(f"Model saved to {model_path}")
-        print(f"Scaler saved to {scaler_path}")
+        print(f"Local artifacts available at: {artifacts_dir}/")
 
     return history

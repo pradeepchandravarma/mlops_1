@@ -27,7 +27,7 @@ def train_model(
     # ---------------------------
     os.makedirs(artifacts_dir, exist_ok=True)
 
-    model_path = os.path.join(artifacts_dir, "model.keras")
+    model_path = os.path.join(artifacts_dir, "model.h5") 
     scaler_path = os.path.join(artifacts_dir, "scaler.joblib")
 
     model.save(model_path)

@@ -9,7 +9,9 @@ import mlflow.sklearn
 
 if __name__ == "__main__":
 
-    mlflow.set_tracking_uri("http://localhost:5000")
+    #mlflow.set_tracking_uri("http://localhost:5000")
+    mlflow.set_tracking_uri("http://mlops-mlflow-server-1077737027.eu-west-2.elb.amazonaws.com")
+  
 
     mlflow.set_experiment("student-performance")
 

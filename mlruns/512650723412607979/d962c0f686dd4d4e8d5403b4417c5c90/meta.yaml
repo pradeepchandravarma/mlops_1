@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/mpchv/Desktop/MLOPS/mlops_1/mlruns/512650723412607979/d962c0f686dd4d4e8d5403b4417c5c90/artifacts
+end_time: 1767543271841
+entry_point_name: ''
+experiment_id: '512650723412607979'
+lifecycle_stage: active
+run_id: d962c0f686dd4d4e8d5403b4417c5c90
+run_name: regression_NN_pradeep_1
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767543191774
+status: 3
+tags: []
+user_id: mpchv

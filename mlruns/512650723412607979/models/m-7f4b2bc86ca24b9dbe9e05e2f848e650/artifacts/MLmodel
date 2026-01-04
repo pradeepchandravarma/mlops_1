@@ -1,0 +1,22 @@
+artifact_path: file:///C:/Users/mpchv/Desktop/MLOPS/mlops_1/mlruns/512650723412607979/models/m-7f4b2bc86ca24b9dbe9e05e2f848e650/artifacts
+flavors:
+  python_function:
+    data: data
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.tensorflow
+    python_version: 3.11.14
+  tensorflow:
+    code: null
+    data: data
+    keras_version: 2.20.0
+    model_type: keras
+    save_format: tf
+mlflow_version: 3.8.1
+model_id: m-7f4b2bc86ca24b9dbe9e05e2f848e650
+model_size_bytes: 33911
+model_uuid: m-7f4b2bc86ca24b9dbe9e05e2f848e650
+prompts: null
+run_id: d962c0f686dd4d4e8d5403b4417c5c90
+utc_time_created: '2026-01-04 16:14:25.754541'

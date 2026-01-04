@@ -1,0 +1,10 @@
+artifact_location: file:///C:/Users/mpchv/Desktop/MLOPS/mlops_1/mlruns/605613274171143502/models/m-40205f8b5ab240d381ae9625248720c3/artifacts
+creation_timestamp: 1767542970518
+experiment_id: '605613274171143502'
+last_updated_timestamp: 1767542975556
+model_id: m-40205f8b5ab240d381ae9625248720c3
+model_type: null
+name: tf_model
+source_run_id: 0406eb6ffad14ef29b8b5ce1ba14f1eb
+status: 2
+status_message: null

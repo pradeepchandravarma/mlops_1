@@ -22,6 +22,8 @@ def main():
            model=model,
            X_train=X_train_scaled,
            y_train=y_train,
+           X_test=X_test_scaled,
+           y_test=y_test,
            scaler=scaler,
            epochs=EPOCHS,
            batch_size=BATCH_SIZE,

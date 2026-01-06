@@ -1,8 +1,14 @@
+import os
 import streamlit as st
 import requests
 
-#API_URL = "http://127.0.0.1:8000/predict"
-API_URL = "http://host.docker.internal:8000/predict"
+# Base API URL (no /predict hardcoded)
+API_BASE_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
+
+# Final predict endpoint
+PREDICT_URL = f"{API_BASE_URL.rstrip('/')}/predict"
+
+st.write("Calling API at:", PREDICT_URL)
 
 st.title("Student Performance Predictor (UI)")
 
@@ -22,7 +28,11 @@ if st.button("Predict"):
             "Sample Question Papers Practiced": papers,
         }
     }
-    r = requests.post(API_URL, json=payload, timeout=10)
-    r.raise_for_status()
-    pred = r.json()["prediction"]
-    st.success(f"Predicted Performance Index: {pred:.2f}")
+
+    try:
+        r = requests.post(PREDICT_URL, json=payload, timeout=10)
+        r.raise_for_status()
+        pred = r.json()["prediction"]
+        st.success(f"Predicted Performance Index: {pred:.2f}")
+    except requests.exceptions.RequestException as e:
+        st.error(f"API call failed: {e}")

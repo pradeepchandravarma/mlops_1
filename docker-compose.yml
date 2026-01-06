@@ -1,0 +1,55 @@
+services:
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlflow.db:/app/mlflow.db
+      - ./artifacts:/app/artifacts
+      - ./mlruns:/app/mlruns
+
+  train:
+    build:
+      context: .
+      dockerfile: Dockerfile.train
+    container_name: train
+    depends_on:
+      - mlflow
+    env_file:
+      - .env
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlops-mlflow-server-1077737027.eu-west-2.elb.amazonaws.com
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./mlruns:/app/mlruns
+    command: python src/train_lasso.py
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.inference
+    container_name: api
+    depends_on:
+      - mlflow
+    environment:
+      #- MLFLOW_TRACKING_URI=http://mlflow:5000
+       - API_URL=http://api:8000/predict
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./artifacts:/app/artifacts
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: streamlit
+    depends_on:
+      - api
+    environment:
+      - API_URL=http://api:8000/predict
+    ports:
+      - "8501:8501"

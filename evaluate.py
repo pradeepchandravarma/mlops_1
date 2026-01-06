@@ -8,7 +8,6 @@ from sklearn.model_selection import train_test_split
 
 from config import Config
 
-
 def regression_metrics(y_true, y_pred) -> dict:
     mse = mean_squared_error(y_true, y_pred)
     rmse = float(np.sqrt(mse))

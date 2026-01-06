@@ -1,0 +1,21 @@
+__pycache__/
+*.pyc
+
+# virtual environments
+venv/
+.venv/
+
+# mlflow
+mlruns/
+artifacts/
+mlflow.db
+
+# models
+*.joblib
+
+# git
+.git/
+.gitignore
+
+# OS junk
+.DS_Store

@@ -8,3 +8,5 @@ uvicorn[standard]
 pydantic
 streamlit
 requests
+boto3
+python-dotenv

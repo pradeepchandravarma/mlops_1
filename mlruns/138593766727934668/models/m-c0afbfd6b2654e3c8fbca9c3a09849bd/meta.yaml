@@ -1,0 +1,10 @@
+artifact_location: file:///home/ec2-user/mlopsproject/vidya/Student-lasso/mlruns/138593766727934668/models/m-c0afbfd6b2654e3c8fbca9c3a09849bd/artifacts
+creation_timestamp: 1767007622363
+experiment_id: '138593766727934668'
+last_updated_timestamp: 1767007624692
+model_id: m-c0afbfd6b2654e3c8fbca9c3a09849bd
+model_type: null
+name: model
+source_run_id: 018996a392b1463b807bab15ba81c444
+status: 2
+status_message: null

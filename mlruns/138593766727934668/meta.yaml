@@ -1,6 +1,0 @@
-artifact_location: file:///home/ec2-user/mlopsproject/vidya/Student-lasso/mlruns/138593766727934668
-creation_time: 1767007621216
-experiment_id: '138593766727934668'
-last_update_time: 1767007621216
-lifecycle_stage: active
-name: student_performance_lasso

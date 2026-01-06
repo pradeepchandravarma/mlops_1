@@ -6,3 +6,4 @@ venv/
 mlruns/
 mlflow.db
 artifacts/
+mlruns/

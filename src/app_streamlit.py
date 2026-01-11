@@ -3,7 +3,8 @@ import streamlit as st
 import requests
 
 # Base API URL (no /predict hardcoded)
-API_BASE_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
+#API_BASE_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
+API_BASE_URL = os.getenv("API_URL", "mlops-api:8000")
 
 # Final predict endpoint
 PREDICT_URL = f"{API_BASE_URL.rstrip('/')}/predict"

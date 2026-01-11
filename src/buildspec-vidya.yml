@@ -9,10 +9,10 @@ phases:
   build:
     commands:
       - echo Build API image
-      - docker build -f Dockerfile.api -t $API_REPO:latest .
+      - docker build -f src/Dockerfile.api -t $API_REPO:latest .
 
       - echo Build Streamlit image
-      - docker build -f Dockerfile.app_streamlit -t $UI_REPO:latest .
+      - docker build -f src/Dockerfile.app_streamlit -t $UI_REPO:latest .
 
       - echo Tag images
       - docker tag $API_REPO:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:latest

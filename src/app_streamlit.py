@@ -3,14 +3,15 @@ import streamlit as st
 import requests
 
 # Base API URL (no /predict hardcoded)
-API_BASE_URL = os.getenv("API_URL", "apicontainer:8000")
+#API_BASE_URL = os.getenv("API_URL", "http://apicontainer:8000")
+API_BASE_URL = os.getenv("API_URL", "http://host.docker.internal:8000")
 
 # Final predict endpoint
 PREDICT_URL = f"{API_BASE_URL.rstrip('/')}/predict"
 
 st.write("Calling API at:", PREDICT_URL)
 
-st.title("Student Performance Predictor (UI)")
+st.title("Student Performance Predictor (Rishika)")
 
 hours = st.number_input("Hours Studied", min_value=0.0, max_value=24.0, value=6.0)
 prev = st.number_input("Previous Scores", min_value=0.0, max_value=100.0, value=75.0)

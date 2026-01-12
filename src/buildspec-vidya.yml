@@ -29,7 +29,7 @@ phases:
 
       #- echo Deploy Streamlit service
       #- aws ecs update-service --cluster $ECS_CLUSTER --service $UI_SERVICE --force-new-deployment
-      
+
       - echo Create imagedefinitions for ECS Deploy stage
       - printf '[{"name":"%s","imageUri":"%s"}]' "$API_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:latest" > imagedefinitions-api.json
       - printf '[{"name":"%s","imageUri":"%s"}]' "$UI_CONTAINER_NAME"  "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:latest"  > imagedefinitions-ui.json
@@ -38,7 +38,7 @@ phases:
       - cat imagedefinitions-api.json
       - cat imagedefinitions-ui.json
 
-  artifacts:
-    files:
+artifacts:
+  files:
     - imagedefinitions-api.json
     - imagedefinitions-ui.json

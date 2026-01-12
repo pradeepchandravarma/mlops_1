@@ -14,7 +14,13 @@ def train_regression():
     #print("After removal:", df.duplicated().sum())
 
     #feature engineering
-    df['Extracurricular Activities'] = df['Extracurricular Activities'].replace({"Yes":1,"No":0})
+    #df['Extracurricular Activities'] = df['Extracurricular Activities'].replace({"Yes":1,"No":0})
+    df['Extracurricular Activities'] = (
+    df['Extracurricular Activities']
+    .replace({"Yes": 1, "No": 0})
+    .infer_objects(copy=False)
+    )
+
     df.infer_objects(copy=False)
     #print(df.head())
 

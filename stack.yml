@@ -1,0 +1,208 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ECS Fargate Cluster with API and UI services using Service Connect and ECR images
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: rishika-mlops
+
+  ApiImage:
+    Type: String
+    Description: Full ECR image URI for API (account.dkr.ecr.region.amazonaws.com/repo:tag)
+
+  UiImage:
+    Type: String
+    Description: Full ECR image URI for UI (account.dkr.ecr.region.amazonaws.com/repo:tag)
+
+  DesiredCount:
+    Type: Number
+    Default: 1
+  
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+
+Resources:
+  ########################
+  # ECS Cluster
+  ########################
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${ProjectName}-cluster"
+
+  ########################
+  # Cloud Map Namespace (Service Connect)
+  ########################
+  ServiceNamespace:
+    Type: AWS::ServiceDiscovery::HttpNamespace
+    Properties:
+      Name: !Sub "${ProjectName}.local"
+
+  ########################
+  # IAM Roles
+  ########################
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-ecs-exec"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-ecs-task"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+
+  ########################
+  # Log Groups
+  ########################
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ecs/${ProjectName}/api"
+      RetentionInDays: 14
+
+  UiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ecs/${ProjectName}/ui"
+      RetentionInDays: 14
+
+  ########################
+  # API Task Definition
+  ########################
+  ApiTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${ProjectName}-api"
+      Cpu: "256"
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities: ["FARGATE"]
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: api
+          Image: !Ref ApiImage
+          PortMappings:
+            - Name: api-8000
+              ContainerPort: 8000
+              AppProtocol: http
+          Environment:
+            - Name: SERVICE_NAME
+              Value: api
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref ApiLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  ########################
+  # UI Task Definition
+  ########################
+  UiTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${ProjectName}-ui"
+      Cpu: "256"
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities: ["FARGATE"]
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: ui
+          Image: !Ref UiImage
+          PortMappings:
+            - Name: ui-8501
+              ContainerPort: 8501
+              AppProtocol: http
+          Environment:
+            - Name: API_URL
+              Value: "http://api:8000"
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref UiLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  ########################
+  # Security Group
+  ########################
+  ServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS services SG
+      VpcId: !Ref "AWS::NoValue"
+
+  ########################
+  # API Service
+  ########################
+  ApiService:
+    Type: AWS::ECS::Service
+    DependsOn: ServiceNamespace
+    Properties:
+      ServiceName: api
+      Cluster: !Ref ECSCluster
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      TaskDefinition: !Ref ApiTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Ref SubnetIds
+          SecurityGroups:
+            - !Ref ServiceSecurityGroup
+      ServiceConnectConfiguration:
+        Enabled: true
+        Namespace: !Ref ServiceNamespace
+        Services:
+          - PortName: api-8000
+            DiscoveryName: api
+
+  ########################
+  # UI Service
+  ########################
+  UiService:
+    Type: AWS::ECS::Service
+    DependsOn: ServiceNamespace
+    Properties:
+      ServiceName: ui
+      Cluster: !Ref ECSCluster
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      TaskDefinition: !Ref UiTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Ref SubnetIds
+          SecurityGroups:
+            - !Ref ServiceSecurityGroup
+      ServiceConnectConfiguration:
+        Enabled: true
+        Namespace: !Ref ServiceNamespace
+      
+
+Outputs:
+  Cluster:
+    Value: !Ref ECSCluster
+  ApiServiceName:
+    Value: !Ref ApiService
+  UiServiceName:
+    Value: !Ref UiService

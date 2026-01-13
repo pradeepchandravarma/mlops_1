@@ -19,7 +19,7 @@ phases:
   post_build:
     commands:
       - docker push 430006376054.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
-      - printf '[{"name":"inference","imageUri":"%s"}]' 430006376054.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG > imagedefinitions.json
+      - printf '[{"name":"pradeep-api","imageUri":"%s"}]' 430006376054.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG > imagedefinitions.json
 
 artifacts:
   files:

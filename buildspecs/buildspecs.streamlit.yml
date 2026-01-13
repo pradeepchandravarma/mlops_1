@@ -13,7 +13,7 @@ phases:
 
   build:
     commands:
-      - docker build -t $ECR_REPO -f src/Dockerfile.api .
+      - docker build -t $ECR_REPO -f src/Dockerfile.app_streamlit .
       - docker tag $ECR_REPO:latest 430006376054.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
 
   post_build:

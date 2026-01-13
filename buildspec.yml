@@ -9,8 +9,8 @@ env:
     API_REPO: "suganthy-api"
     UI_REPO: "suganthy-streamlit"
 
-    API_CONTAINER_NAME: "api"        # MUST match API task definition container name
-    UI_CONTAINER_NAME: "streamlit"   # MUST match Streamlit task definition container name
+    API_CONTAINER_NAME: "suganthy-api"        # MUST match API task definition container name
+    UI_CONTAINER_NAME: "suganthy-streamlit"   # MUST match Streamlit task definition container name
 
 phases:
   pre_build:

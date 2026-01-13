@@ -11,7 +11,7 @@ PREDICT_URL = f"{API_BASE_URL.rstrip('/')}/predict"
 
 st.write("Calling API at:", PREDICT_URL)
 
-st.title("Student Performance Predictor (Rishika)")
+st.title("Student Performance Predictor (UI) Rishika")
 
 hours = st.number_input("Hours Studied", min_value=0.0, max_value=24.0, value=6.0)
 prev = st.number_input("Previous Scores", min_value=0.0, max_value=100.0, value=75.0)

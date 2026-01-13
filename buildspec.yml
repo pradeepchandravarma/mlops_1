@@ -5,10 +5,12 @@ env:
   variables:
     AWS_REGION: "eu-west-2"
     ACCOUNT_ID: "430006376054"
+
     API_REPO: "suganthy-api"
     UI_REPO: "suganthy-streamlit"
-    API_CONTAINER_NAME: "suganthy-api"
-    UI_CONTAINER_NAME: "suganthy-streamlit"
+
+    API_CONTAINER_NAME: "api"        # MUST match API task definition container name
+    UI_CONTAINER_NAME: "streamlit"   # MUST match Streamlit task definition container name
 
 phases:
   pre_build:
@@ -23,8 +25,10 @@ phases:
     commands:
       - 'echo "Build API image..."'
       - 'docker build -f src/Dockerfile.api -t "$API_REPO:$TAG" .'
+
       - 'echo "Build UI (Streamlit) image..."'
       - 'docker build -f src/Dockerfile.app_streamlit -t "$UI_REPO:$TAG" .'
+
       - 'echo "Tag images for ECR..."'
       - 'docker tag "$API_REPO:$TAG" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG"'
       - 'docker tag "$UI_REPO:$TAG" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG"'
@@ -34,12 +38,24 @@ phases:
       - 'echo "Push images to ECR..."'
       - 'docker push "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG"'
       - 'docker push "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG"'
-      - 'echo "Create image definitions for CodePipeline..."'
+
+      - 'echo "Create image definitions..."'
+      # For API service deploy action
       - 'printf ''[{"name":"%s","imageUri":"%s"}]'' "$API_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG" > imagedefinitions-api.json'
+      # For Streamlit service deploy action
       - 'printf ''[{"name":"%s","imageUri":"%s"}]'' "$UI_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG" > imagedefinitions-ui.json'
-      - 'echo "Build completed."'
+
+      # Default file name some ECS deploy actions expect (ONLY ONE SERVICE can use this unless you reconfigure actions)
+      - 'cp imagedefinitions-api.json imagedefinitions.json'
+
+      - 'echo "Artifacts created:"'
+      - 'ls -la'
+      - 'echo "imagedefinitions-api.json:" && cat imagedefinitions-api.json'
+      - 'echo "imagedefinitions-ui.json:" && cat imagedefinitions-ui.json'
+      - 'echo "imagedefinitions.json:" && cat imagedefinitions.json'
 
 artifacts:
   files:
+    - imagedefinitions.json
     - imagedefinitions-api.json
     - imagedefinitions-ui.json

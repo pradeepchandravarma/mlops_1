@@ -3,33 +3,36 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - echo Logging in to Amazon ECR...
+      - echo Logging in to Amazon ECR
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
   build:
     commands:
-      - echo Build API image...
+      - echo Build API image
       - docker build -f src/Dockerfile.api -t $API_REPO:latest .
 
-      - echo Build UI image...
+      - echo Build UI image
       - docker build -f src/Dockerfile.app_streamlit -t $UI_REPO:latest .
 
-      - echo Tag images...
+      - echo Tag images
       - docker tag $API_REPO:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:latest
       - docker tag $UI_REPO:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:latest
 
   post_build:
     commands:
-      - echo Push images...
+      - echo Push images
       - docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:latest
       - docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:latest
 
-      - echo Writing imagedefinitions.json for CodePipeline ECS Deploy actions...
-      - printf '[{"name":"mary-mlops-api","imageUri":"%s"},{"name":"mary-mlops-ui","imageUri":"%s"}]' \
-        "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:latest" \
-        "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:latest" > imagedefinitions.json
+      - echo Writing imagedefinitions files
+      - printf '[{"name":"mary-mlops-api","imageUri":"%s"}]' "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:latest" > imagedefinitions-api.json
+      - printf '[{"name":"mary-mlops-ui","imageUri":"%s"}]' "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:latest" > imagedefinitions-ui.json
+      - cat imagedefinitions-api.json
+      - cat imagedefinitions-ui.json
 
 artifacts:
   files:
-    - imagedefinitions.json
+    - imagedefinitions-api.json
+    - imagedefinitions-ui.json
+
 

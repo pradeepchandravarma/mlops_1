@@ -11,3 +11,4 @@ mlflow.db
 
 # trained models
 models/
+pipe_*.json

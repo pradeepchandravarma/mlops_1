@@ -1,0 +1,27 @@
+version: 0.1
+
+env:
+  variables:
+    AWS_REGION: eu-west-2
+    ECR_REPO: pradeep_studen_performance/streamlit
+    IMAGE_TAG: latest
+
+phases:
+  pre_build:
+    commands:
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin 430006376054.dkr.ecr.$AWS_REGION.amazonaws.com
+
+  build:
+    commands:
+      - docker build -t $ECR_REPO -f src/Dockerfile.api .
+      - docker tag $ECR_REPO:latest 430006376054.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
+
+  post_build:
+    commands:
+      - docker push 430006376054.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
+      - printf '[{"name":"pradeep-streamlit","imageUri":"%s"}]' 430006376054.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
+

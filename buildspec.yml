@@ -1,6 +1,7 @@
 version: 0.2
 
 env:
+  shell: bash
   variables:
     AWS_REGION: "eu-west-2"
     ACCOUNT_ID: "430006376054"
@@ -12,31 +13,31 @@ env:
 phases:
   pre_build:
     commands:
-      - set -euo pipefail
-      - echo "Logging in to Amazon ECR..."
-      - aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
-      - TAG="$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c1-7)"
-      - echo "Using image tag: $TAG"
+      - "set -euo pipefail"
+      - 'echo "Logging in to Amazon ECR..."'
+      - 'aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"'
+      - 'TAG="$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c1-7)"'
+      - 'echo "Using image tag: $TAG"'
 
   build:
     commands:
-      - echo "Build API image..."
-      - docker build -f src/Dockerfile.api -t "$API_REPO:$TAG" .
-      - echo "Build UI (Streamlit) image..."
-      - docker build -f src/Dockerfile.app_streamlit -t "$UI_REPO:$TAG" .
-      - echo "Tag images for ECR..."
-      - docker tag "$API_REPO:$TAG" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG"
-      - docker tag "$UI_REPO:$TAG" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG"
+      - 'echo "Build API image..."'
+      - 'docker build -f src/Dockerfile.api -t "$API_REPO:$TAG" .'
+      - 'echo "Build UI (Streamlit) image..."'
+      - 'docker build -f src/Dockerfile.app_streamlit -t "$UI_REPO:$TAG" .'
+      - 'echo "Tag images for ECR..."'
+      - 'docker tag "$API_REPO:$TAG" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG"'
+      - 'docker tag "$UI_REPO:$TAG" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG"'
 
   post_build:
     commands:
-      - echo "Push images to ECR..."
-      - docker push "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG"
-      - docker push "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG"
-      - echo "Create image definitions for CodePipeline..."
-      - printf '[{"name":"%s","imageUri":"%s"}]' "$API_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG" > imagedefinitions-api.json
-      - printf '[{"name":"%s","imageUri":"%s"}]' "$UI_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG" > imagedefinitions-ui.json
-      - echo "Build completed."
+      - 'echo "Push images to ECR..."'
+      - 'docker push "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG"'
+      - 'docker push "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG"'
+      - 'echo "Create image definitions for CodePipeline..."'
+      - 'printf ''[{"name":"%s","imageUri":"%s"}]'' "$API_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG" > imagedefinitions-api.json'
+      - 'printf ''[{"name":"%s","imageUri":"%s"}]'' "$UI_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG" > imagedefinitions-ui.json'
+      - 'echo "Build completed."'
 
 artifacts:
   files:

@@ -4,17 +4,15 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR
-      - aws ecr get-login-password --region $AWS_REGION |
-        docker login --username AWS --password-stdin
-        $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
   build:
     commands:
       - echo Build API image
-      - docker build -f src/Dockerfile.api -t $API_REPO .
+      - docker build -f src/Dockerfile.api -t $API_REPO:latest .
 
       - echo Build UI image
-      - docker build -f src/Dockerfile.app_streamlit -t $UI_REPO .
+      - docker build -f src/Dockerfile.app_streamlit -t $UI_REPO:latest .
 
       - echo Tag images
       - docker tag $API_REPO:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:latest
@@ -26,8 +24,9 @@ phases:
       - docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:latest
       - docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:latest
 
-      - echo Deploy API service
-      - aws ecs update-service --cluster $ECS_CLUSTER --service $API_SERVICE --force-new-deployment
+      - echo Writing imagedefinitions.json for DeployAPI
+      - printf '[{"name":"mary-mlops-api","imageUri":"%s"}]' "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:latest" > imagedefinitions.json
 
-      - echo Deploy UI service
-      - aws ecs update-service --cluster $ECS_CLUSTER --service $UI_SERVICE --force-new-deployment
+artifacts:
+  files:
+    - imagedefinitions.json

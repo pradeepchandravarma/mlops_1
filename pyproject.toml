@@ -1,12 +1,7 @@
 [project]
 name = "mlops-1"
 version = "0.1.0"
-description = "MLOps project with API, Streamlit UI, and LLM integration"
+description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-
-dependencies = [
-  "streamlit",
-  "requests",
-  "psycopg2-binary",
-]
+dependencies = []

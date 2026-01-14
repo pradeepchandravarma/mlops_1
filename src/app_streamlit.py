@@ -2,14 +2,10 @@ import os
 import streamlit as st
 import requests
 
-# Base API URL (no /predict hardcoded)
-API_BASE_URL = os.getenv("API_URL") or "http://api.mary-api:8000"
-
-# Final predict endpoint
+API_BASE_URL = os.getenv("API_URL", "http://api.mary-api:8000")
 PREDICT_URL = f"{API_BASE_URL.rstrip('/')}/predict"
 
 st.write("Calling API at:", PREDICT_URL)
-
 st.title("Maryam Student Performance Predictor (UI)")
 
 hours = st.number_input("Hours Studied", min_value=0.0, max_value=24.0, value=6.0)
@@ -30,9 +26,14 @@ if st.button("Predict"):
     }
 
     try:
-        r = requests.post(PREDICT_URL, json=payload, timeout=10)
+        r = requests.post(PREDICT_URL, json=payload, timeout=15)
         r.raise_for_status()
-        pred = r.json()["prediction"]
-        st.success(f"Predicted Performance Index: {pred:.2f}")
+        data = r.json()
+        pred = data.get("prediction")
+        if pred is None:
+            st.error(f"Bad response JSON: {data}")
+        else:
+            st.success(f"Predicted Performance Index: {float(pred):.2f}")
     except requests.exceptions.RequestException as e:
         st.error(f"API call failed: {e}")
+

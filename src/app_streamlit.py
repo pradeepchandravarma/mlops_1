@@ -1,6 +1,8 @@
 import os
 import streamlit as st
 import requests
+import psycopg2
+
 
 # Base API URL (no /predict hardcoded)
 API_BASE_URL = os.getenv("API_URL") or "http://api.mary-api:8000"
@@ -9,6 +11,24 @@ API_BASE_URL = os.getenv("API_URL") or "http://api.mary-api:8000"
 PREDICT_URL = f"{API_BASE_URL.rstrip('/')}/predict"
 
 st.write("Calling API at:", PREDICT_URL)
+
+st.sidebar.header("Debug")
+
+if st.sidebar.button("Test DB connection"):
+    try:
+        conn = psycopg2.connect(
+            host=os.environ["DB_HOST"],
+            port=os.environ.get("DB_PORT", "5432"),
+            dbname=os.environ.get("DB_NAME", "postgres"),
+            user=os.environ["DB_USER"],
+            password=os.environ["DB_PASSWORD"],
+            connect_timeout=5,
+        )
+        st.sidebar.success("✅ Connected to PostgreSQL RDS")
+        conn.close()
+    except Exception as e:
+        st.sidebar.error(f"❌ DB connection failed: {e}")
+
 
 st.title("Maryam Student Performance Predictor (UI)")
 

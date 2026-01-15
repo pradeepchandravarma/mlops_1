@@ -6,7 +6,12 @@ API_BASE_URL = os.getenv("API_URL", "http://api.mary-api:8000")
 PREDICT_URL = f"{API_BASE_URL.rstrip('/')}/predict"
 
 st.write("Calling API at:", PREDICT_URL)
+<<<<<<< HEAD
 st.title("Maryam Student Performance Predictor (UI)")
+=======
+
+st.title("Suganthy V1 - Student Performance Predictor (UI)")
+>>>>>>> origin/suganthy-main
 
 hours = st.number_input("Hours Studied", min_value=0.0, max_value=24.0, value=6.0)
 prev = st.number_input("Previous Scores", min_value=0.0, max_value=100.0, value=75.0)

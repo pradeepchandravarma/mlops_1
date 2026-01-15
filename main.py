@@ -5,6 +5,7 @@ from src.evaluate import model_evaluate
 import joblib
 import mlflow
 import mlflow.sklearn
+import os
 
 
 if __name__ == "__main__":
@@ -21,11 +22,18 @@ if __name__ == "__main__":
         print("----------Gradient Descent Model Trained and Saved Successfully------------")
 
         #save trained model
+        """
+        joblib.dump(
+        {"model": model, "scaler": scaler},
+        "models/student_performance_sgd.joblib"
+        )"""
+
+        os.makedirs("models", exist_ok=True)
+
         joblib.dump(
         {"model": model, "scaler": scaler},
         "models/student_performance_sgd.joblib"
         )
-
 
 
         #mlflow.log_artifact("models/student_performance_sgd.joblib", artifact_path="model")

@@ -2,52 +2,52 @@ version: 0.2
 
 env:
   variables:
-    AWS_REGION: "eu-west-2"
-    ACCOUNT_ID: "430006376054"
-
-    API_REPO: "mlops-api"
-    UI_REPO: "mlops-ui"
-
-    API_CONTAINER_NAME: "mary-mlops-api"
-    UI_CONTAINER_NAME: "mary-mlops-ui"
+    AWS_REGION: eu-west-2
+    API_REPO: mlops-api
+    UI_REPO: mlops-ui
+    API_CONTAINER_NAME: mary-mlops-api
+    UI_CONTAINER_NAME: mary-mlops-ui
 
 phases:
   pre_build:
     commands:
-      - "set -euo pipefail"
-      - 'echo "Logging in to Amazon ECR..."'
-      - 'aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"'
-      - 'TAG="$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c1-7)"'
-      - 'echo "Using image tag: $TAG"'
-      - '[ -n "$TAG" ] || (echo "TAG is empty" && exit 1)'
+      - echo "Logging in to Amazon ECR..."
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - aws ecr get-login-password --region $AWS_REGION |
+        docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH}
+      - echo "Image tag: $IMAGE_TAG"
 
   build:
     commands:
-      - 'echo "Build API image..."'
-      - 'docker build -f src/Dockerfile.api -t "$API_REPO:$TAG" .'
-      - 'echo "Build UI (Streamlit) image..."'
-      - 'docker build -f src/Dockerfile.app_streamlit -t "$UI_REPO:$TAG" .'
-      - 'echo "Tag images for ECR..."'
-      - 'docker tag "$API_REPO:$TAG" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG"'
-      - 'docker tag "$UI_REPO:$TAG" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG"'
+      - echo "Build API image"
+      - docker build -t $API_REPO:$IMAGE_TAG -f Dockerfile .
+
+      - echo "Build UI (Streamlit) image"
+      - docker build -t $UI_REPO:$IMAGE_TAG -f src/Dockerfile.app_streamlit .
+
+      - echo "Tag images"
+      - docker tag $API_REPO:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$IMAGE_TAG
+      - docker tag $UI_REPO:$IMAGE_TAG  $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$IMAGE_TAG
 
   post_build:
     commands:
-      - 'echo "Push images to ECR..."'
-      - 'docker push "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG"'
-      - 'docker push "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG"'
-      - 'echo "Create image definitions..."'
-      - 'printf ''[{"name":"%s","imageUri":"%s"}]'' "$API_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG" > imagedefinitions-api.json'
-      - 'printf ''[{"name":"%s","imageUri":"%s"}]'' "$UI_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG" > imagedefinitions-ui.json'
-      - 'cp imagedefinitions-api.json imagedefinitions.json'
-      - 'echo "Artifacts created:"'
-      - "ls -la"
-      - 'echo "imagedefinitions-api.json:" && cat imagedefinitions-api.json'
-      - 'echo "imagedefinitions-ui.json:" && cat imagedefinitions-ui.json'
-      - 'echo "imagedefinitions.json:" && cat imagedefinitions.json'
+      - echo "Push images to ECR"
+      - docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$IMAGE_TAG
+      - docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$IMAGE_TAG
+
+      - echo "Create combined imagedefinitions.json"
+      - |
+        printf '[{"name":"%s","imageUri":"%s"},{"name":"%s","imageUri":"%s"}]' \
+        "$API_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$IMAGE_TAG" \
+        "$UI_CONTAINER_NAME"  "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$IMAGE_TAG" \
+        > imagedefinitions.json
+
+      - echo "imagedefinitions.json:"
+      - cat imagedefinitions.json
 
 artifacts:
   files:
     - imagedefinitions.json
-    - imagedefinitions-api.json
-    - imagedefinitions-ui.json

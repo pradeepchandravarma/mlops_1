@@ -38,13 +38,19 @@ phases:
       - echo "Create image definitions..."
       - printf '[{"name":"%s","imageUri":"%s"}]' "${API_CONTAINER_NAME}" "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${API_REPO}:${TAG}" > imagedefinitions-api.json
       - printf '[{"name":"%s","imageUri":"%s"}]' "${UI_CONTAINER_NAME}" "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${UI_REPO}:${TAG}" > imagedefinitions-ui.json
-      - echo "Artifacts created:"
-      - ls -la
-      - echo "imagedefinitions-api.json:"; cat imagedefinitions-api.json
-      - echo "imagedefinitions-ui.json:"; cat imagedefinitions-ui.json
+      - |
+          echo "Artifacts created:"
+          ls -la
+      - |
+          echo "imagedefinitions-api.json:"
+          cat imagedefinitions-api.json
+      - |
+          echo "imagedefinitions-ui.json:"
+          cat imagedefinitions-ui.json
 
 artifacts:
   files:
     - imagedefinitions-api.json
     - imagedefinitions-ui.json
+
 

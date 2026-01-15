@@ -2,19 +2,24 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install dependencies
+# System deps (needed for some pip packages on slim)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    build-essential \
+    libpq-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code (only what API needs)
+# Copy app code
 COPY src/api.py /app/api.py
 COPY src/llm_service.py /app/llm_service.py
 
-# Copy trained model into container
+# Copy model
 COPY models/student_performance_sgd.joblib /app/models/student_performance_sgd.joblib
 
-# Expose FastAPI port
 EXPOSE 8000
-
-# Run FastAPI
 CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+

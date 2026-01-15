@@ -1,0 +1,8 @@
+psycopg2-binary
+openai
+fastapi
+uvicorn
+joblib
+pandas
+scikit-learn
+pydantic

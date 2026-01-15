@@ -1,9 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
 import pandas as pd
-
-from src.llm_service import handle_llm_query  # LLM endpoint support
 
 app = FastAPI(title="Student Performance Predictor")
 
@@ -30,8 +28,7 @@ def health():
 @app.post("/predict")
 def predict(req: PredictRequest):
     X = pd.DataFrame([req.features])
-    if "Extracurricular Activities" in X.columns:
-        X["Extracurricular Activities"] = X["Extracurricular Activities"].replace({"Yes": 1, "No": 0})
+    X["Extracurricular Activities"] = X["Extracurricular Activities"].replace({"Yes": 1, "No": 0})
     X_scaled = scaler.transform(X)
     pred = model.predict(X_scaled)[0]
     return {"prediction": float(pred)}
@@ -43,6 +40,13 @@ def llm_query(req: LLMQueryRequest):
     NL -> SQL (SELECT only) -> run on RDS -> return rows + short answer
     """
     try:
+        # Lazy import so the API can boot even if LLM module packaging isn't ready yet
+        try:
+            from llm_service import handle_llm_query
+        except ModuleNotFoundError:
+            # fallback if files are copied directly into /app without src as a package
+            from llm_service import handle_llm_query
+
         result = handle_llm_query(req.question)
         return {
             "question": req.question,
@@ -50,12 +54,12 @@ def llm_query(req: LLMQueryRequest):
             "rows": result["rows"],
             "answer": result["answer"],
         }
-    except RuntimeError as e:
-        # usually config missing (OPENAI key / DB env / table missing)
-        raise HTTPException(status_code=503, detail=str(e))
-    except ValueError as e:
-        # usually unsafe SQL or invalid user request
-        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {
+            "question": req.question,
+            "error": str(e),
+            "sql": None,
+            "rows": [],
+            "answer": None,
+        }
 

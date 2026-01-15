@@ -1,44 +1,26 @@
-import os
-import streamlit as st
-import requests
+from fastapi import FastAPI
+from pydantic import BaseModel
+import joblib
+import pandas as pd
 
-API_BASE_URL = os.getenv("API_URL", "http://api.mary-api:8000")
-PREDICT_URL = f"{API_BASE_URL.rstrip('/')}/predict"
+app = FastAPI(title="Student Performance Predictor")
 
-st.write("Calling API at:", PREDICT_URL)
-<<<<<<< HEAD
-st.title("Maryam Student Performance Predictor (UI)")
-=======
+MODEL_PATH = "models/student_performance_sgd.joblib"
+bundle = joblib.load(MODEL_PATH)
+model = bundle["model"]
+scaler = bundle["scaler"]
 
-st.title("Suganthy V1 - Student Performance Predictor (UI)")
->>>>>>> origin/suganthy-main
+class PredictRequest(BaseModel):
+    features: dict
 
-hours = st.number_input("Hours Studied", min_value=0.0, max_value=24.0, value=6.0)
-prev = st.number_input("Previous Scores", min_value=0.0, max_value=100.0, value=75.0)
-extra = st.selectbox("Extracurricular Activities", ["Yes", "No"])
-sleep = st.number_input("Sleep Hours", min_value=0.0, max_value=24.0, value=7.0)
-papers = st.number_input("Sample Question Papers Practiced", min_value=0.0, max_value=50.0, value=4.0)
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
-if st.button("Predict"):
-    payload = {
-        "features": {
-            "Hours Studied": hours,
-            "Previous Scores": prev,
-            "Extracurricular Activities": extra,
-            "Sleep Hours": sleep,
-            "Sample Question Papers Practiced": papers,
-        }
-    }
-
-    try:
-        r = requests.post(PREDICT_URL, json=payload, timeout=15)
-        r.raise_for_status()
-        data = r.json()
-        pred = data.get("prediction")
-        if pred is None:
-            st.error(f"Bad response JSON: {data}")
-        else:
-            st.success(f"Predicted Performance Index: {float(pred):.2f}")
-    except requests.exceptions.RequestException as e:
-        st.error(f"API call failed: {e}")
-
+@app.post("/predict")
+def predict(req: PredictRequest):
+    X = pd.DataFrame([req.features])
+    X["Extracurricular Activities"] = X["Extracurricular Activities"].replace({"Yes": 1, "No": 0})
+    X_scaled = scaler.transform(X)
+    pred = model.predict(X_scaled)[0]
+    return {"prediction": float(pred)}

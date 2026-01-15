@@ -1,13 +1,3 @@
-<<<<<<< HEAD
-psycopg2-binary
-openai
-fastapi
-uvicorn
-joblib
-pandas
-scikit-learn
-pydantic
-=======
 # Core
 pandas>=2.2.0
 numpy>=1.26.0
@@ -19,11 +9,16 @@ fastapi>=0.110.0
 uvicorn[standard]>=0.27.0
 pydantic>=2.6.0
 
+# DB
+psycopg2-binary
+
 # UI
 streamlit>=1.31.0
 requests>=2.31.0
 
-# MLOps / Tracking
-mlflow>=2.12.0
+# LLM
+openai
+
+# AWS / MLOps
 boto3>=1.34.0
->>>>>>> origin/suganthy-main
+mlflow>=2.12.0

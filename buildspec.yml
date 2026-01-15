@@ -17,7 +17,7 @@ phases:
       - echo "Logging in to Amazon ECR..."
       - aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
       - TAG="$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c1-7)"
-      - 'echo "Using image tag: $TAG"'
+      - echo "Using image tag: $TAG"
       - test -n "$TAG"
 
   build:
@@ -36,18 +36,17 @@ phases:
       - docker push "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG"
       - docker push "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG"
       - echo "Create image definitions..."
-      - 'printf ''[{"name":"%s","imageUri":"%s"}]'' "$API_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG" > imagedefinitions-api.json'
-      - 'printf ''[{"name":"%s","imageUri":"%s"}]'' "$UI_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG" > imagedefinitions-ui.json'
+      - printf '[{"name":"%s","imageUri":"%s"}]' "$API_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG" > imagedefinitions-api.json
+      - printf '[{"name":"%s","imageUri":"%s"}]' "$UI_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG" > imagedefinitions-ui.json
       - cp imagedefinitions-api.json imagedefinitions.json
       - echo "Artifacts created:"
       - ls -la
-      - 'echo "imagedefinitions-api.json:" && cat imagedefinitions-api.json'
-      - 'echo "imagedefinitions-ui.json:" && cat imagedefinitions-ui.json'
-      - 'echo "imagedefinitions.json:" && cat imagedefinitions.json'
+      - echo "imagedefinitions-api.json:" && cat imagedefinitions-api.json
+      - echo "imagedefinitions-ui.json:" && cat imagedefinitions-ui.json
+      - echo "imagedefinitions.json:" && cat imagedefinitions.json
 
 artifacts:
   files:
     - imagedefinitions.json
     - imagedefinitions-api.json
     - imagedefinitions-ui.json
-

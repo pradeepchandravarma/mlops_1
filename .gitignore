@@ -10,10 +10,5 @@ src/__pycache__/
 mlruns/
 mlflow.db
 
-
 # trained models
 models/
-
-
-#env file
-.env

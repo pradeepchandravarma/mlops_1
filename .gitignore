@@ -2,18 +2,19 @@
 venv/
 .venv/
 
-# python cache
-src/__pycache__/
+# installed/vendor packages (you have this folder)
+package/
+
+# python cache (everywhere)
+__pycache__/
 *.pyc
 
 # mlflow
 mlruns/
 mlflow.db
 
-
 # trained models
 models/
 
-
-#env file
+# env file
 .env

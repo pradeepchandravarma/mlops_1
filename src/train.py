@@ -15,6 +15,7 @@ def train_regression():
 
     #feature engineering
     #df['Extracurricular Activities'] = df['Extracurricular Activities'].replace({"Yes":1,"No":0})
+
     df['Extracurricular Activities'] = (
     df['Extracurricular Activities']
     .replace({"Yes": 1, "No": 0})

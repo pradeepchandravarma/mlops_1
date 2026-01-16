@@ -1,59 +1,55 @@
-#def main():
-    #print("Hello from mlops-1!")
-from src.train import train_regression
-from src.evaluate import model_evaluate
+from datetime import datetime
+import os
+
 import joblib
 import mlflow
 import mlflow.sklearn
-import os
+
+from src.train import train_regression
+from src.evaluate import model_evaluate
 
 
-if __name__ == "__main__":
+def generate_model_name(your_name: str, model_name: str) -> str:
+    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    return f"{your_name}-{model_name}-{timestamp}"
 
-    #mlflow.set_tracking_uri("http://localhost:5000")
-    mlflow.set_tracking_uri("http://mlops-mlflow-server-1077737027.eu-west-2.elb.amazonaws.com")
-  
 
+def main():
+    # 1) Get MLflow tracking URI from environment (AWS CodeBuild will set this)
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
+    if not tracking_uri:
+        raise RuntimeError("MLFLOW_TRACKING_URI env var is not set")
+
+    mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment("student-performance")
 
     with mlflow.start_run(run_name="sgd_regression_rishika"):
         model, scaler, X_test, y_test = train_regression()
 
-        print("----------Gradient Descent Model Trained and Saved Successfully------------")
-
-        #save trained model
-        """
-        joblib.dump(
-        {"model": model, "scaler": scaler},
-        "models/student_performance_sgd.joblib"
-        )"""
+        print("----------Gradient Descent Model Trained Successfully------------")
 
         os.makedirs("models", exist_ok=True)
+        joblib.dump({"model": model, "scaler": scaler}, "models/student_performance_sgd.joblib")
 
-        joblib.dump(
-        {"model": model, "scaler": scaler},
-        "models/student_performance_sgd.joblib"
+        registered_model_latest = generate_model_name(
+            your_name="suganthy",
+            model_name="sgd_student_performance"
         )
+        print("Registering model as:", registered_model_latest)
 
-
-        #mlflow.log_artifact("models/student_performance_sgd.joblib", artifact_path="model")
-
-        # Log & register model (auto-versioned)
+        # 2) Correct MLflow API: artifact_path (NOT name)
         mlflow.sklearn.log_model(
-            model,
-            name='model',
-            registered_model_name='sgd_student_performance'
+            sk_model=model,
+            artifact_path="model",
+            registered_model_name=registered_model_latest
         )
 
         metrics = model_evaluate(model, X_test, y_test)
         print("\n------------Model Metrics------------")
         print(metrics)
 
-
         mlflow.log_metric("mse", metrics["mse"])
         mlflow.log_metric("r2", metrics["r2"])
-
-
 
         mlflow.log_param("model_type", "SGDRegressor")
         mlflow.log_param("loss", "squared_error")
@@ -61,5 +57,7 @@ if __name__ == "__main__":
         mlflow.log_param("eta0", 0.01)
         mlflow.log_param("max_iter", 1000)
         mlflow.log_param("random_state", 42)
-        
-        
+
+
+if __name__ == "__main__":
+    main()

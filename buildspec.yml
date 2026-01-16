@@ -5,72 +5,56 @@ env:
   variables:
     AWS_REGION: "eu-west-2"
     ACCOUNT_ID: "430006376054"
-
     API_REPO: "suganthy-api"
     UI_REPO: "suganthy-streamlit"
+    API_CONTAINER_NAME: "suganthy-api"
+    UI_CONTAINER_NAME: "suganthy-streamlit"
 
-    API_CONTAINER_NAME: "suganthy-api"        # MUST match API task definition container name
-    UI_CONTAINER_NAME: "suganthy-streamlit"   # MUST match Streamlit task definition container name
-
-    # REQUIRED: your MLflow tracking server URL (set this in CodeBuild environment variables ideally)
-    MLFLOW_TRACKING_URI: "http://mlops-mlflow-server-1077737027.eu-west-2.elb.amazonaws.com"
-    
 phases:
   install:
     runtime-versions:
       python: 3.11
     commands:
-      - set -euo pipefail
-      - echo "Upgrading pip and installing Python dependencies..."
-      - python -m pip install --upgrade pip
-      - pip install -r requirements.txt
+      - 'set -euo pipefail'
+      - 'echo "Installing Python dependencies..."'
+      - 'python -m pip install --upgrade pip'
+      - 'pip install -r requirements.txt'
 
   pre_build:
     commands:
-      - echo "Validating MLflow env..."
-      - |
-        if [ -z "${MLFLOW_TRACKING_URI:-}" ]; then
-          echo "ERROR: MLFLOW_TRACKING_URI is not set in CodeBuild environment variables."
-          exit 1
-        fi
-      - echo "Training + registering model to MLflow at: $MLFLOW_TRACKING_URI"
-      - python main.py
-
-      - echo "Logging in to Amazon ECR..."
-      - aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
-      - TAG="$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c1-7)"
-      - echo "Using image tag: $TAG"
+      - 'echo "Checking MLflow config..."'
+      - 'test -n "${MLFLOW_TRACKING_URI:-}" || (echo "ERROR: MLFLOW_TRACKING_URI not set" && exit 1)'
+      - 'echo "Running training and registering model to MLflow..."'
+      - 'python main.py'
+      - 'echo "Logging in to Amazon ECR..."'
+      - 'aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"'
+      - 'TAG="$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c1-7)"'
+      - 'echo "Using image tag: $TAG"'
 
   build:
     commands:
-      - echo "Build API image..."
-      - docker build -f src/Dockerfile.api -t "$API_REPO:$TAG" .
-
-      - echo "Build UI (Streamlit) image..."
-      - docker build -f src/Dockerfile.app_streamlit -t "$UI_REPO:$TAG" .
-
-      - echo "Tag images for ECR..."
-      - docker tag "$API_REPO:$TAG" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG"
-      - docker tag "$UI_REPO:$TAG" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG"
+      - 'echo "Building API image..."'
+      - 'docker build -f src/Dockerfile.api -t "$API_REPO:$TAG" .'
+      - 'echo "Building Streamlit UI image..."'
+      - 'docker build -f src/Dockerfile.app_streamlit -t "$UI_REPO:$TAG" .'
+      - 'echo "Tagging images..."'
+      - 'docker tag "$API_REPO:$TAG" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG"'
+      - 'docker tag "$UI_REPO:$TAG" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG"'
 
   post_build:
     commands:
-      - echo "Push images to ECR..."
-      - docker push "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG"
-      - docker push "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG"
-
-      - echo "Create image definitions..."
-      - printf '[{"name":"%s","imageUri":"%s"}]' "$API_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG" > imagedefinitions-api.json
-      - printf '[{"name":"%s","imageUri":"%s"}]' "$UI_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG" > imagedefinitions-ui.json
-
-      # Some ECS deploy actions expect this default file name
-      - cp imagedefinitions-api.json imagedefinitions.json
-
-      - echo "Artifacts created:"
-      - ls -la
-      - echo "imagedefinitions-api.json:" && cat imagedefinitions-api.json
-      - echo "imagedefinitions-ui.json:" && cat imagedefinitions-ui.json
-      - echo "imagedefinitions.json:" && cat imagedefinitions.json
+      - 'echo "Pushing images to ECR..."'
+      - 'docker push "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG"'
+      - 'docker push "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG"'
+      - 'echo "Creating imagedefinitions files..."'
+      - 'printf ''[{"name":"%s","imageUri":"%s"}]'' "$API_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_REPO:$TAG" > imagedefinitions-api.json'
+      - 'printf ''[{"name":"%s","imageUri":"%s"}]'' "$UI_CONTAINER_NAME" "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$UI_REPO:$TAG" > imagedefinitions-ui.json'
+      - 'cp imagedefinitions-api.json imagedefinitions.json'
+      - 'echo "Artifacts:"'
+      - 'ls -la'
+      - 'cat imagedefinitions-api.json'
+      - 'cat imagedefinitions-ui.json'
+      - 'cat imagedefinitions.json'
 
 artifacts:
   files:

@@ -13,7 +13,7 @@ env:
     UI_CONTAINER_NAME: "suganthy-streamlit"   # MUST match Streamlit task definition container name
 
     # REQUIRED: your MLflow tracking server URL (set this in CodeBuild environment variables ideally)
-    MLFLOW_TRACKING_URI="http://mlops-mlflow-server-1077737027.eu-west-2.elb.amazonaws.com"
+    MLFLOW_TRACKING_URI: "http://mlops-mlflow-server-1077737027.eu-west-2.elb.amazonaws.com"
     
 phases:
   install:

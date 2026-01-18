@@ -624,7 +624,7 @@ def user_asked_how_computed(user_query: str) -> bool:
 # =========================
 # Streamlit UI
 # =========================
-st.set_page_config(page_title="Student App (Predictor + Copilot)", layout="wide")
+st.set_page_config(page_title="Student Performance App (Predictor + Copilot)", layout="wide")
 st.title("Student Performance App (Predictor + Dataset Copilot)")
 
 tabs = st.tabs(["🎯 Predictor", "🤖 Copilot (Dataset-only)"])

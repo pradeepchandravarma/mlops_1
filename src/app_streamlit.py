@@ -52,7 +52,6 @@ import matplotlib.pyplot as plt
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 
-
 # ============================================================
 # CONFIG
 # ============================================================
@@ -218,6 +217,8 @@ def tool_explain(tool: str, args: Dict[str, Any]) -> str:
         return "Computed percentile using numpy.percentile(values, p)."
     if tool == "summary_stats":
         return "Computed summary stats (mean/median/std/min/max/p10/p25/p75/p90) from filtered values."
+    if tool == "mean_filter":
+        return "Computed mean of value_col over rows matching filter: df_filtered[value_col].mean()."
     if tool == "correlation":
         return "Computed Pearson correlation: df[[x,y]].corr().iloc[0,1]."
     if tool == "distribution_bins":
@@ -298,6 +299,15 @@ def run_tool(df: pd.DataFrame, req: Dict[str, Any]) -> Dict[str, Any]:
             "p90": float(np.percentile(vals, 90)),
         }
         return {"tool": "summary_stats", "args": args, "result": result, "explanation": explanation}
+
+    if tool == "mean_filter":
+        value_col = args.get("value_col", "Performance Index")
+        f = args.get("filter")
+        df2 = apply_structured_filter(df, f)
+        vals = df2[value_col].dropna().astype(float).values
+        if len(vals) == 0:
+            return {"tool": "mean_filter", "args": args, "result": {"n": 0, "mean": None}, "explanation": explanation}
+        return {"tool": "mean_filter", "args": args, "result": {"n": int(len(vals)), "mean": float(np.mean(vals))}, "explanation": explanation}
 
     if tool == "correlation":
         x = args["x"]
@@ -396,37 +406,99 @@ def make_plot(
 
 
 # ============================================================
-# TOOL + PLOT FORCING (NO HALLUCINATION)
+# PLOTTING SPEC (deterministic)
+# ============================================================
+def infer_plot_spec(user_query: str) -> Optional[Dict[str, Any]]:
+    q = user_query.lower()
+    if not user_asked_for_plot(user_query):
+        return None
+
+    if "extracurricular" in q or "extra curricular" in q:
+        if "hours" in q or "studied" in q:
+            return {"kind": "box", "x": "Extracurricular Activities", "y": "Hours Studied", "groupby": None, "filter_struct": None}
+        return {"kind": "bar_count", "x": "Extracurricular Activities", "y": None, "groupby": "Extracurricular Activities", "filter_struct": None}
+
+    if ("hours" in q or "studied" in q) and "performance" in q:
+        return {"kind": "scatter", "x": "Hours Studied", "y": "Performance Index", "groupby": None, "filter_struct": None}
+
+    if any(k in q for k in ["distribution", "hist", "histogram"]):
+        col = _find_col_mention(q) or "Performance Index"
+        return {"kind": "hist", "x": col, "y": None, "groupby": None, "filter_struct": None}
+
+    if "cdf" in q:
+        col = _find_col_mention(q) or "Performance Index"
+        return {"kind": "cdf", "x": col, "y": None, "groupby": None, "filter_struct": None}
+
+    col = _find_col_mention(q) or "Performance Index"
+    if col == "Extracurricular Activities":
+        return {"kind": "bar_count", "x": "Extracurricular Activities", "y": None, "groupby": "Extracurricular Activities", "filter_struct": None}
+    return {"kind": "hist", "x": col, "y": None, "groupby": None, "filter_struct": None}
+
+
+# ============================================================
+# TOOL FORCING (PATCHED: EXACT MATCH + MEAN FILTER)
 # ============================================================
 def force_tools_if_needed(user_query: str) -> List[Dict[str, Any]]:
-    """
-    Guarantee tool results for analytics so the LLM never says "no data"
-    just because it didn't call tools.
-    """
     q = user_query.lower()
 
     # Dataset overview
     if any(p in q for p in OVERVIEW_PHRASES) or ("dataset" in q and ("explain" in q or "describe" in q or "columns" in q)):
         return [{"tool": "overview", "args": {}}]
 
-    # Count questions with condition: "sleep more than 5"
+    # Count / percentage questions (PATCHED: handle ONLY/EXACTLY/==)
     if any(k in q for k in ["how many", "number of", "count", "percentage", "percent", "proportion"]):
         col = _find_col_mention(q) or "Sleep Hours"
-        m = re.search(r"(more than|over|>|>=|less than|under|<|<=)\s*(\d+(\.\d+)?)", q)
-        if m:
-            op_raw = m.group(1)
-            val = float(m.group(2))
-            op = ">"
+
+        # exact match: "only 5", "exactly 5", "equal to 5", "= 5"
+        exact = re.search(r"(only|exactly|equal to|equals|=)\s*(\d+(\.\d+)?)", q)
+        if exact:
+            val = float(exact.group(2))
+            return [{"tool": "count_pct", "args": {"filter": {"col": col, "op": "==", "value": val}}}]
+
+        # inequality: more than/over/>/>=/less than/under/</<=
+        ineq = re.search(r"(more than|over|>|>=|less than|under|<|<=)\s*(\d+(\.\d+)?)", q)
+        if ineq:
+            op_raw = ineq.group(1)
+            val = float(ineq.group(2))
+
             if op_raw in [">", "more than", "over"]:
                 op = ">"
             elif op_raw == ">=":
                 op = ">="
             elif op_raw in ["<", "less than", "under"]:
                 op = "<"
-            elif op_raw == "<=":
+            else:
                 op = "<="
+
             return [{"tool": "count_pct", "args": {"filter": {"col": col, "op": op, "value": val}}}]
+
         return [{"tool": "count_pct", "args": {"filter": None}}]
+
+    # Average/mean performance when Hours Studied condition (PATCHED)
+    if ("average" in q or "avg" in q or "mean" in q) and "performance" in q and ("hour" in q or "hours studied" in q):
+        # exact: "only/exactly/equal to/= 5"
+        exact = re.search(r"(only|exactly|equal to|equals|=)\s*(\d+(\.\d+)?)", q)
+        if exact:
+            val = float(exact.group(2))
+            return [{"tool": "mean_filter", "args": {"value_col": "Performance Index", "filter": {"col": "Hours Studied", "op": "==", "value": val}}}]
+
+        # inequality: more than/over/>/>=/less than/under/</<=
+        ineq = re.search(r"(more than|over|>|>=|less than|under|<|<=)\s*(\d+(\.\d+)?)", q)
+        if ineq:
+            op_raw = ineq.group(1)
+            val = float(ineq.group(2))
+            if op_raw in [">", "more than", "over"]:
+                op = ">"
+            elif op_raw == ">=":
+                op = ">="
+            elif op_raw in ["<", "less than", "under"]:
+                op = "<"
+            else:
+                op = "<="
+            return [{"tool": "mean_filter", "args": {"value_col": "Performance Index", "filter": {"col": "Hours Studied", "op": op, "value": val}}}]
+
+        # No threshold provided: global mean
+        return [{"tool": "mean_filter", "args": {"value_col": "Performance Index", "filter": None}}]
 
     # Median
     if "median" in q:
@@ -459,52 +531,17 @@ def force_tools_if_needed(user_query: str) -> List[Dict[str, Any]]:
         if len(mentioned) >= 2:
             return [{"tool": "correlation", "args": {"x": mentioned[0], "y": mentioned[1]}}]
 
-    # If user asked a plot, compute at least summary stats of the mentioned col
+    # Plot request fallback -> compute stats for the most likely column
     if user_asked_for_plot(user_query):
         col = _find_col_mention(q) or "Performance Index"
         return [{"tool": "summary_stats", "args": {"col": col, "filter": None}}]
 
-    return []
-
-
-def infer_plot_spec(user_query: str) -> Optional[Dict[str, Any]]:
-    """
-    No hardcoded mapping per question; only generic plot selection based on mentioned columns.
-    """
-    q = user_query.lower()
-    if not user_asked_for_plot(user_query):
-        return None
-
-    # If user mentions extracurricular: show distribution of a numeric column by category
-    if "extracurricular" in q or "extra curricular" in q:
-        # if also mentions hours studied -> boxplot hours by extracurricular
-        if "hours" in q or "studied" in q:
-            return {"kind": "box", "x": "Extracurricular Activities", "y": "Hours Studied", "groupby": None, "filter_struct": None}
-        # otherwise count of extracurricular
-        return {"kind": "bar_count", "x": "Extracurricular Activities", "y": None, "groupby": "Extracurricular Activities", "filter_struct": None}
-
-    # If asks "hours vs performance" -> scatter
-    if ("hours" in q or "studied" in q) and "performance" in q:
-        return {"kind": "scatter", "x": "Hours Studied", "y": "Performance Index", "groupby": None, "filter_struct": None}
-
-    # If mentions distribution/hist/cdf
-    if any(k in q for k in ["distribution", "hist", "histogram"]):
-        col = _find_col_mention(q) or "Performance Index"
-        return {"kind": "hist", "x": col, "y": None, "groupby": None, "filter_struct": None}
-
-    if "cdf" in q:
-        col = _find_col_mention(q) or "Performance Index"
-        return {"kind": "cdf", "x": col, "y": None, "groupby": None, "filter_struct": None}
-
-    # Default: histogram of the mentioned numeric column
-    col = _find_col_mention(q) or "Performance Index"
-    if col == "Extracurricular Activities":
-        return {"kind": "bar_count", "x": "Extracurricular Activities", "y": None, "groupby": "Extracurricular Activities", "filter_struct": None}
-    return {"kind": "hist", "x": col, "y": None, "groupby": None, "filter_struct": None}
+    # Default
+    return [{"tool": "summary_stats", "args": {"col": "Performance Index", "filter": None}}]
 
 
 # ============================================================
-# LLM: JSON plan + grounded final response
+# LLM: response framing + grounded narrative
 # ============================================================
 class PlotSpecModel(BaseModel):
     kind: PlotKind = Field(...)
@@ -523,10 +560,6 @@ class PlanModel(BaseModel):
 
 
 def ask_llm_for_answer(user_query: str, df: pd.DataFrame) -> PlanModel:
-    """
-    Best practice: LLM only decides response framing + whether to plot.
-    We do NOT let it compute numbers.
-    """
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2, api_key=OPENAI_API_KEY)
     preview = df.head(6).to_dict(orient="records")
     schema = {
@@ -537,10 +570,9 @@ def ask_llm_for_answer(user_query: str, df: pd.DataFrame) -> PlanModel:
 
     system = (
         "You are a dataset-bound analytical agent.\n"
-        "You MUST NOT answer general knowledge questions.\n"
-        "You MUST NOT invent numeric results.\n"
-        "You will receive TOOL_RESULTS separately; only use those for numbers.\n"
-        "Return ONLY JSON matching:\n"
+        "Do NOT answer general knowledge questions.\n"
+        "Do NOT invent numeric results.\n"
+        "Return ONLY JSON:\n"
         "{answer: string, needs_plot: boolean, plot: {kind,x,y,filter_struct,groupby,agg} | null, explain: boolean}\n"
     )
 
@@ -563,9 +595,8 @@ Return ONLY JSON.
         data = json.loads(raw)
         return PlanModel(**data)
     except Exception:
-        # fallback: do not fail hard
         return PlanModel(
-            answer="I can help with dataset questions (counts, medians, percentiles, distributions, comparisons, charts). Please rephrase with the column names.",
+            answer="I can answer dataset questions (counts, means, medians, percentiles, distributions, comparisons, charts). Please rephrase using dataset columns.",
             needs_plot=user_asked_for_plot(user_query),
             plot=None,
             explain=user_asked_how_computed(user_query),
@@ -573,18 +604,14 @@ Return ONLY JSON.
 
 
 def finalize_answer(user_query: str, plan: PlanModel, tool_results: List[Dict[str, Any]]) -> str:
-    """
-    Second pass: LLM writes final narrative grounded ONLY on tool_results.
-    """
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2, api_key=OPENAI_API_KEY)
 
     system = (
         "You are a dataset analyst.\n"
         "Use TOOL_RESULTS as the ONLY source of numeric truth.\n"
-        "If TOOL_RESULTS contains an 'overview' tool, summarize it.\n"
         "If user asked for plot, describe what the plot shows.\n"
-        "Always mention that correlation != causation for comparisons.\n"
-        "Be concise and factual."
+        "Mention correlation != causation where relevant.\n"
+        "Be concise and factual.\n"
     )
 
     prompt = f"""
@@ -597,8 +624,8 @@ PLAN (draft wording):
 TOOL_RESULTS (trusted):
 {json.dumps(tool_results, indent=2)}
 
-Write the final answer. Do not invent numbers. If a value is None, say data not available for that filter.
-If explain=true, add a short "How computed" section using tool explanations.
+Write the final answer. Do not invent numbers.
+If explain=true, add a short 'How computed' section using tool explanations.
 """
     return llm.invoke([{"role": "system", "content": system}, {"role": "user", "content": prompt}]).content
 
@@ -668,7 +695,7 @@ with tabs[1]:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    user_query = st.chat_input("Ask dataset questions (counts, medians, percentiles, distributions, comparisons, charts...)")
+    user_query = st.chat_input("Ask dataset questions (counts, means, medians, percentiles, distributions, comparisons, charts...)")
 
     if user_query:
         st.session_state["copilot_messages"].append({"role": "user", "content": user_query})
@@ -687,13 +714,11 @@ with tabs[1]:
                 st.session_state["copilot_messages"].append({"role": "assistant", "content": final})
             else:
                 with st.spinner("Analyzing..."):
-                    # 1) LLM: response framing only
                     plan = ask_llm_for_answer(user_query, df)
                     plan.explain = plan.explain or user_asked_how_computed(user_query)
 
-                    # 2) Deterministic tools ALWAYS for analytics
+                    # Always run deterministic tools
                     forced_tools = force_tools_if_needed(user_query)
-
                     tool_results: List[Dict[str, Any]] = []
                     for req in forced_tools:
                         try:
@@ -701,30 +726,23 @@ with tabs[1]:
                         except Exception as e:
                             tool_results.append({"tool": req.get("tool"), "args": req.get("args"), "error": str(e), "explanation": "Tool execution failed."})
 
-                    # 3) Plot spec: deterministic, no hallucination
+                    # Plot spec
                     plot_spec = infer_plot_spec(user_query)
                     if plot_spec:
                         plan.needs_plot = True
                         plan.plot = PlotSpecModel(**plot_spec)
 
-                    # If user asked plot but plot_spec couldn't be inferred, default to Performance histogram
-                    if plan.needs_plot and not plan.plot:
-                        plan.plot = PlotSpecModel(kind="hist", x="Performance Index")
-
-                    # 4) Final grounded answer (uses tool_results only)
+                    # Grounded final answer
                     final = finalize_answer(user_query, plan, tool_results)
                     st.markdown(final)
 
-                    # 5) "How computed" section
                     if plan.explain and tool_results:
                         with st.expander("How this was computed (deterministic)", expanded=False):
                             for tr in tool_results:
                                 st.write(f"- **{tr.get('tool')}**: {tr.get('explanation')}")
 
-                    # 6) Render plot if requested
                     if plan.needs_plot and plan.plot:
                         try:
-                            # validate columns
                             if plan.plot.x not in df.columns:
                                 raise ValueError(f"Unknown x column: {plan.plot.x}")
                             if plan.plot.y and plan.plot.y not in df.columns:

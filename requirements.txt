@@ -23,5 +23,5 @@ langchain-community>=0.2.0
 langchain-openai>=0.1.0
 faiss-cpu>=1.8.0
 tiktoken>=0.7.0
-matplotlib>=3.8.0
 scipy>=1.11.0
+matplotlib>=3.8.0

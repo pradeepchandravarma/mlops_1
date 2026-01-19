@@ -641,7 +641,7 @@ tabs = st.tabs(["🎯 Predictor", "🤖 Copilot (Dataset-only)"])
 
 # ---------- TAB 1: Predictor ----------
 with tabs[0]:
-    st.subheader("Student Performance Predictor (UI)")
+    st.subheader("Student Performance Predictor V1 (UI)")
     st.caption(f"Calling API at: {PREDICT_URL}")
 
     hours = st.number_input("Hours Studied", min_value=0.0, max_value=24.0, value=6.0)

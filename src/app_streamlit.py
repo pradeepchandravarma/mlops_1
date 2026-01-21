@@ -3,7 +3,7 @@ import streamlit as st
 import requests
 
 # Base API URL (no /predict hardcoded)
-API_BASE_URL = os.getenv("API_URL", "apicontainer:8000")
+API_BASE_URL = os.getenv("API_URL", "http://api:8000")
 
 # Final predict endpoint
 PREDICT_URL = f"{API_BASE_URL.rstrip('/')}/predict"

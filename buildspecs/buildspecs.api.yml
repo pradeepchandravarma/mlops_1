@@ -3,7 +3,7 @@ version: 0.1
 env:
   variables:
     AWS_REGION: eu-west-2
-    ECR_REPO: pradeep_studen_performance/api
+    ECR_REPO: test/api
     IMAGE_TAG: latest
 
 phases:
